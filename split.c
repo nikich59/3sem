@@ -20,8 +20,6 @@ void split(char *str, char *delim, char ***words, int *words_count)
 
         (*words_count)++;
     }
-
-    return 0;
 }
 
 int main ()
