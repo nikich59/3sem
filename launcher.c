@@ -4,6 +4,12 @@
 #include <time.h>
 #include <string.h>
 
+/*
+ * FIXIT:
+ * Вы весь код стараетесь писать в GNU стиле http://www.gnu.org/prep/standards/standards.html
+ * А названия констант явно выпадают.
+ */
+
 #define usleep_delay 100000
 #define max_process_str_length 1000
 #define max_process_param_num 50
@@ -27,8 +33,13 @@ struct process
     int need_report;    // if need report about process' launching to terminal
 };
 
+/*
+ * Глобальные переменные - не здорово. Их наличие противоречит модульности программы, т.е. вы не сможене скорпировать ф-ю из одной программы в другую, т.к. эти
+ * глобальные переменные надо будет тащить с собой.
+ */
 struct process **process_queue;
 int process_number = 0;
+
 
 void split(char *str, char *delim, char ***words, int *words_count);
 
@@ -59,15 +70,17 @@ void split(char *str, char *delim, char ***words, int *words_count)
     }
 
     (*words)[*words_count] = s;
-
-    return;
 }
 
 void add_process(time_t launchTime, char **argv, int need_wait, int need_report)
 {
+/*
+ * FIXIT:
+ * Хватит уже так делать: то, что вы хотите написать делается с помощью realloc`а: выделить больше памяти + скопировать результат + освободить прежнюю память.
+ * А лучше почитайте, как работает vector (из с++ или какого-нибудь ещё языка), либо подождите до семинара, я расскажу вам.
+ */
     struct process **use = (struct process **) malloc((process_number + 1)
             * sizeof(struct process *));
-
 
     int i;
     for (i = 0; i < process_number; i++)
@@ -92,6 +105,9 @@ void add_process(time_t launchTime, char **argv, int need_wait, int need_report)
 
 void remove_process(int num)
 {
+  /*
+   * Можно было просто последний поставить на num-ное место, если вам неважен порядко следования элементов.
+   */
     struct process **use = (struct process **) malloc((process_number - 1)
             * sizeof(struct process *));
 
@@ -122,9 +138,11 @@ void check_launch()
 {
     int i;
     time_t currentTime = time(NULL);
+    /*
+     * Я думал вы просто сделаете sleep перед execом на нужное число секунд. дочерние процессы параллельно "поспят" нужно время и запустятся.
+     */
     for (i = 0; i < process_number; i++)
     {
-
         if (process_queue[i]->launchTime <= currentTime)
         {
             launch_process(process_queue[i]->argv, process_queue[i]->need_wait,
@@ -160,9 +178,15 @@ void launch_process(char **argv, int need_wait, int need_report)
     if (pid == 0)
     {
         execvp(argv[0], argv);
+        /*
+         * Вот здесь можно вывести какой-то текст, в случае, если запуститься не удалось.
+         */
         exit(0);
     }
 
+    /*
+     * Не совсем то, что надо. Если будет очень долгий процесс, который запускаем первым, то остальные просрочат время запуска, т.к. родительский дожидается этого.
+     */
     int status = 0;
     if (need_wait)
     {
@@ -179,25 +203,19 @@ void make_process_queue(FILE *inptr)
 {
     char str[max_process_str_length];
 
-
     while (fgets(str, max_process_str_length, inptr) != NULL)
     {
         int need_wait = need_wait_default, need_report = need_report_default;
 
         str[strlen(str) - 1]= '\0';
-
         int time_end = strcspn(str, process_cfg_delim);
 
-        char *argv_str = (char   *) malloc(max_process_str_length * sizeof(char));
-
+        char *argv_str = (char *) malloc(max_process_str_length * sizeof(char));
         char **argv = (char **) malloc(max_process_param_num * sizeof(char *));
 
         int argc;
-
         strcpy(argv_str, str + time_end + 1);
-
         split(argv_str, process_cfg_delim, &argv, &argc);
-
         int process_time = atoi(str) + time(NULL);
 
         add_process(process_time, argv, need_wait, need_report);
@@ -222,6 +240,11 @@ int main()
 
     return 0;
 }
+
+/*
+ * Если вы запустили дочерний процесс, то у него своё адресное пространство. Память под аргументы командной строки для данного процесса выделится отдельно.
+ * Она никак не будет связана с тем массивом argv, который был в родительском процессе.
+ */
 
 
 
