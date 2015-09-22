@@ -1,0 +1,6 @@
+0 pwd
+8 ls -al
+4 touch hello.txt
+5 gedit hello.txt
+6 gcc hello.c -o hello.out
+7 ./hello.out
