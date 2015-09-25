@@ -1,6 +1,10 @@
-0 pwd
-8 ls -al
+/ '/' is a comment for one line
+/ '$' is a flag to NOT REPORT the process launch
+/ '#' is a flag to NOT WAIT the process' ending
+
+$0 pwd
+$8 ls -al
 4 touch hello.txt
-5 gedit hello.txt
-6 gcc hello.c -o hello.out
-7 ./hello.out
+4 gedit hello.txt
+#6 gcc hello.c -o hello.out
+#$7 ./hello.out
