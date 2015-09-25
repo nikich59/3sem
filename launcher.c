@@ -4,260 +4,231 @@
 #include <time.h>
 #include <string.h>
 
-/*
- * FIXIT:
- * Вы весь код стараетесь писать в GNU стиле http://www.gnu.org/prep/standards/standards.html
- * А названия констант явно выпадают.
- */
+#define usleepDelay 100000
+#define maxProcessStrLength 1000
+#define minProcessStrLength 3
+#define maxProcessParamNum 50
+#define processCfgDelim " "
+#define dontNeedReportChar '$'
+#define dontNeedWaitChar '#'
+#define commentChar '/'
 
-#define usleep_delay 100000
-#define max_process_str_length 1000
-#define max_process_param_num 50
-#define process_cfg_delim " "
+#define inputFileName "launcher.in"
 
-#define maxStringLength 1000
-#define maxDelimStrLength 50
-#define maxWordNumber 100
-#define max_process_num 50
+#define needWaitDefault 1
+#define needReportDefult 1
 
-#define file_in_name "launcher.in"
-
-#define need_wait_default 1
-#define need_report_default 1
-
-struct process
+struct Process
 {
     time_t launchTime;
     char **argv;
-    int need_wait;      // if need wait till the process ends
-    int need_report;    // if need report about process' launching to terminal
+    int needWait;      // if need wait till the process ends
+    int needReport;    // if need report about process' launching to terminal
 };
 
-/*
- * Глобальные переменные - не здорово. Их наличие противоречит модульности программы, т.е. вы не сможене скорпировать ф-ю из одной программы в другую, т.к. эти
- * глобальные переменные надо будет тащить с собой.
- */
-struct process **process_queue;
-int process_number = 0;
-
-
-void split(char *str, char *delim, char ***words, int *words_count);
-
-void add_process(time_t launchTime, char **argv, int need_wait, int need_report);
-
-void remove_process(int num);
-
-void check_launch();
-
-void launch_process(char **argv, int need_wait, int need_report);
-
-void make_process_queue(FILE *inptr);
-
-
-
-void split(char *str, char *delim, char ***words, int *words_count)
+struct ProcessQueue
 {
-    *words_count = 0;
+    struct Process **processQueue;
+    int processNumber;
+};
+
+void split(char *str, char *delim, char ***words, int *wordsCount);
+
+void addProcess(struct ProcessQueue *queue, time_t launchTime, char **argv, int needWait, int needReport);
+
+void removeProcess(struct ProcessQueue *queue, int num);
+
+void checkLaunch(struct ProcessQueue *queue);
+
+void launchProcess(char **argv, int needWait, int needReport);
+
+int makeProcessQueue(FILE *inptr, struct ProcessQueue *queue);
+
+int isDigit(char ch)
+{
+    return (ch >= '0' && ch <= '9');
+}
+
+void split(char *str, char *delim, char ***words, int *wordsCount)
+{
+    *wordsCount = 0;
 
     char *s = strtok(str, delim);
 
-    while (s != NULL)
-    {
-        (*words)[*words_count] = s;
+    while (s != NULL) {
+        (*words)[*wordsCount] = s;
 
         s = strtok(NULL, delim);
-        (*words_count)++;
+        (*wordsCount)++;
     }
 
-    (*words)[*words_count] = s;
+    (*words)[*wordsCount] = s;
 }
 
-void add_process(time_t launchTime, char **argv, int need_wait, int need_report)
+void addProcess(struct ProcessQueue *queue, time_t launchTime, char **argv, int needWait, int needReport)
 {
-/*
- * FIXIT:
- * Хватит уже так делать: то, что вы хотите написать делается с помощью realloc`а: выделить больше памяти + скопировать результат + освободить прежнюю память.
- * А лучше почитайте, как работает vector (из с++ или какого-нибудь ещё языка), либо подождите до семинара, я расскажу вам.
- */
-    struct process **use = (struct process **) malloc((process_number + 1)
-            * sizeof(struct process *));
+    queue->processQueue = (struct Process **) realloc((void *)queue->processQueue,
+                                                      (queue->processNumber + 1) *
+                                                      sizeof(struct Process *));
 
-    int i;
-    for (i = 0; i < process_number; i++)
-    {
-        use[i] = process_queue[i];
-    }
+    queue->processQueue[queue->processNumber] = (struct Process *) malloc(sizeof(struct Process *));
 
-    use[process_number] = (struct process*) malloc(sizeof(struct process));
+    queue->processQueue[queue->processNumber]->argv       = argv;
+    queue->processQueue[queue->processNumber]->launchTime = launchTime;
+    queue->processQueue[queue->processNumber]->needReport = needReport;
+    queue->processQueue[queue->processNumber]->needWait   = needWait;
 
-    (use[process_number])->argv = argv;
-    (use[process_number])->launchTime = launchTime;
-    (use[process_number])->need_wait = need_wait;
-    (use[process_number])->need_report = need_report;
-
-
-    free(process_queue);
-
-    process_queue = use;
-
-    process_number++;
+    queue->processNumber++;
 }
 
-void remove_process(int num)
+void removeProcess(struct ProcessQueue *queue, int num)
 {
-  /*
-   * Можно было просто последний поставить на num-ное место, если вам неважен порядко следования элементов.
-   */
-    struct process **use = (struct process **) malloc((process_number - 1)
-            * sizeof(struct process *));
+    struct Process **use = (struct Process **) malloc((queue->processNumber - 1)
+            * sizeof(struct Process *));
 
     int i;
-    for (i = 0; i < process_number; i++)
-    {
-        if (i < num)
-        {
-            use[i] = process_queue[i];
+    for (i = 0; i < queue->processNumber; i++) {
+        if (i < num) {
+            use[i] = queue->processQueue[i];
         }
-        if (i > num)
-        {
-            use[i - 1] = process_queue[i];
+        if (i > num) {
+            use[i - 1] = queue->processQueue[i];
         }
     }
 
-    free(process_queue[num]->argv[0]);
-    free(process_queue[num]->argv);
-    free(process_queue[num]);
-    free(process_queue);
+    free(queue->processQueue[num]->argv[0]);
+    free(queue->processQueue[num]->argv);
+    free(queue->processQueue[num]);
+    free(queue->processQueue);
 
-    process_queue = use;
+    queue->processQueue = use;
 
-    process_number--;
+    queue->processNumber--;
 }
 
-void check_launch()
+void checkLaunch(struct ProcessQueue *queue)
 {
     int i;
+
     time_t currentTime = time(NULL);
-    /*
-     * Я думал вы просто сделаете sleep перед execом на нужное число секунд. дочерние процессы параллельно "поспят" нужно время и запустятся.
-     */
-    for (i = 0; i < process_number; i++)
-    {
-        if (process_queue[i]->launchTime <= currentTime)
-        {
-            launch_process(process_queue[i]->argv, process_queue[i]->need_wait,
-                    process_queue[i]->need_report);
 
-            remove_process(i);
+    for (i = 0; i < queue->processNumber; i++) {
+        if (queue->processQueue[i]->launchTime <= currentTime) {
+            launchProcess(queue->processQueue[i]->argv, queue->processQueue[i]->needWait,
+                    queue->processQueue[i]->needReport);
+
+            removeProcess(queue, i);
         }
     }
 }
 
-void launch_process(char **argv, int need_wait, int need_report)
+void launchProcess(char **argv, int needWait, int needReport)
 {
     int i;
 
-    if (need_report)
-    {
+    if (needReport) {
         printf("\nProcess \"%s\" started ", argv[0]);
 
-        if (argv[1] == NULL)
+        if (argv[1] == NULL) {
             printf("with no parameters.\n");
-        else
-        {
+        } else {
             printf("with parmeters:");
             for (i = 1; argv[i] != NULL; i++)
                 printf(" \"%s\"", argv[i]);
             printf("\n");
         }
+
         printf(">>>>>\n");
     }
 
     pid_t pid = fork();
 
-    if (pid == 0)
-    {
-        execvp(argv[0], argv);
-        /*
-         * Вот здесь можно вывести какой-то текст, в случае, если запуститься не удалось.
-         */
+    if (pid == 0) {
+        int execStatus = execvp(argv[0], argv);
+
+        if (execStatus != 0) {
+            printf("\nCan`t launch \"%s\".\n", argv[0]);
+        }
+
         exit(0);
     }
 
-    /*
-     * Не совсем то, что надо. Если будет очень долгий процесс, который запускаем первым, то остальные просрочат время запуска, т.к. родительский дожидается этого.
-     */
     int status = 0;
-    if (need_wait)
-    {
-        pid_t child_ID = wait(&status);
-        if (need_report)
-            printf("Done! %d was returned.\n", status / 0xff);
+    if (needWait) {
+        pid_t childId = wait(&status);
+        if (needReport)
+            printf("Done! Status %d was returned.\n", status / 0xff);
     }
 
-    if (need_report)
+    if (needReport)
         printf("<<<<<\n");
 }
 
-void make_process_queue(FILE *inptr)
+int makeProcessQueue(FILE *inptr, struct ProcessQueue *queue)
 {
-    char str[max_process_str_length];
+    char *str = (char *) malloc(maxProcessStrLength * sizeof(char));
 
-    while (fgets(str, max_process_str_length, inptr) != NULL)
-    {
-        int need_wait = need_wait_default, need_report = need_report_default;
+    while (fgets(str, maxProcessStrLength, inptr) != NULL) {
+        if (strlen(str) < minProcessStrLength)
+            continue;
 
-        str[strlen(str) - 1]= '\0';
-        int time_end = strcspn(str, process_cfg_delim);
+        char *argvStr = (char *) malloc(maxProcessStrLength * sizeof(char));
+        char **argv = (char **) malloc(maxProcessParamNum * sizeof(char *));
 
-        char *argv_str = (char *) malloc(max_process_str_length * sizeof(char));
-        char **argv = (char **) malloc(max_process_param_num * sizeof(char *));
+        int needWait = needWaitDefault, needReport = needReportDefult;
+
+        str[strlen(str) - 1] = '\0';
+
+        int timeEnd = strcspn(str, processCfgDelim);
 
         int argc;
-        strcpy(argv_str, str + time_end + 1);
-        split(argv_str, process_cfg_delim, &argv, &argc);
-        int process_time = atoi(str) + time(NULL);
+        strcpy(argvStr, str + timeEnd + 1);
+        split(argvStr, processCfgDelim, &argv, &argc);
 
-        add_process(process_time, argv, need_wait, need_report);
+        char *firstDigit = str;
+        if (*firstDigit == commentChar)
+            continue;
+
+        while ((firstDigit - str) < maxProcessStrLength && !isDigit(*firstDigit)) {
+            if (*firstDigit == dontNeedReportChar)
+                needReport = 0;
+            if (*firstDigit == dontNeedWaitChar)
+                needWait = 0;
+            if (*firstDigit == ' ')
+                return -1;
+            firstDigit++;
+        }
+
+        int processTime = atoi(firstDigit) + time(NULL);
+
+        addProcess(queue, processTime, argv, needWait, needReport);
     }
-}
 
-int main()
-{
-    FILE *inptr;
-
-    inptr  = fopen(file_in_name, "r");
-
-    make_process_queue(inptr);
-
-    while (process_number > 0)
-    {
-        check_launch();
-        usleep(usleep_delay);
-    }
-
-    fclose(inptr);
+    free(str);
 
     return 0;
 }
 
-/*
- * Если вы запустили дочерний процесс, то у него своё адресное пространство. Память под аргументы командной строки для данного процесса выделится отдельно.
- * Она никак не будет связана с тем массивом argv, который был в родительском процессе.
- */
+int main()
+{
+    FILE *infutFile;
 
+    infutFile  = fopen(inputFileName, "r");
 
+    struct ProcessQueue queue;
+    queue.processQueue = NULL;
+    queue.processNumber = 0;
 
+    if (makeProcessQueue(infutFile, &queue) != 0) {
+        printf("\nCan`t read \"%s\".\n", inputFileName);
+    }
 
+    while (queue.processNumber > 0) {
+        checkLaunch(&queue);
+        usleep(usleepDelay);
+    }
 
+    fclose(infutFile);
 
-
-
-
-
-
-
-
-
-
-
+    return 0;
+}
