@@ -211,15 +211,20 @@ int makeProcessQueue(FILE *inptr, struct ProcessQueue *queue)
 
 int main()
 {
-    FILE *infutFile;
+    FILE *inputFile;
 
-    infutFile  = fopen(inputFileName, "r");
+    inputFile  = fopen(inputFileName, "r");
+
+    if (inputFile == NULL) {
+        printf("\nCan`t open \"%s\" to read processes list :(\n", inputFileName);
+        return 1;
+    }
 
     struct ProcessQueue queue;
     queue.processQueue = NULL;
     queue.processNumber = 0;
 
-    if (makeProcessQueue(infutFile, &queue) != 0) {
+    if (makeProcessQueue(inputFile, &queue) != 0) {
         printf("\nCan`t read \"%s\".\n", inputFileName);
     }
 
@@ -228,7 +233,7 @@ int main()
         usleep(usleepDelay);
     }
 
-    fclose(infutFile);
+    fclose(inputFile);
 
     return 0;
 }
