@@ -4,6 +4,11 @@
 #include <time.h>
 #include <string.h>
 
+/*
+ * Чтобы отличать константы от переменных первые можно их называть заглавной буквы: MaxProcessStrLength, ProcessCfgDelim.
+ * Либо часто их пишут полностью заглавными: MIN_PROCESS_STR_LENGHT
+ */
+
 #define usleepDelay 100000
 #define maxProcessStrLength 1000
 #define minProcessStrLength 3
@@ -32,6 +37,13 @@ struct ProcessQueue
     int processNumber;
 };
 
+/*
+ * можно написать 
+ * typedef struct ProcessQueue ProcessQueue;
+ * и дальше использовать как
+ * ProcessQueue processQueue; // без struct
+ */
+
 void split(char *str, char *delim, char ***words, int *wordsCount);
 
 void addProcess(struct ProcessQueue *queue, time_t launchTime, char **argv, int needWait, int needReport);
@@ -43,6 +55,11 @@ void checkLaunch(struct ProcessQueue *queue);
 void launchProcess(char **argv, int needWait, int needReport);
 
 int makeProcessQueue(FILE *inptr, struct ProcessQueue *queue);
+
+/*
+ * FIXIT: http://www.cplusplus.com/reference/cctype/isdigit/
+ * не нужно дублировать возможности языка
+ */
 
 int isDigit(char ch)
 {
