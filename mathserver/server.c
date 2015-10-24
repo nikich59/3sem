@@ -49,15 +49,32 @@ int canRead;
 
 void *calcInThread(void *v)
 {
+    /*
+     * FIXIT:
+     * Операция присваивания не атомарная, поэтому так делать нельзя.
+     * Если не хотите делать массив из Message, то надо хотя бы окружить критическую секцию семафорами.
+     */
     Message *message = (Message *) v;
 
     message->data.firstArgument = (*functions[message->data.operationCode])(
                 message->data.firstArgument, message->data.secondArgument);
+    /*
+     * У вас почти написаны только первые 2 пункта упражнения. 
+     * Ещё было задание обеспечить, чтобы одновременно выполнялось не более N задач (работало N потоков).
+     * Чтобы самим вам убедиться в корректности работы этого пункта, добавьте вызов sleep(,,.) после выполнения арифметической операции.
+     * При N = 2 из трех консолей запускаете по клиенту и наблюдаете, что сначала завершаются первые два, а потом только третий.
+     */
 
     printf("Calculated\n");
 
+    /*
+     * Это что за переменная такая? Неиспользуемые переменные удаляйте.
+     */
     canRead = 0;
 
+    /*
+     * Зачем SEND_TO_SERVER нужен? Почему не просто message->data.senderId?
+     */
     message->msgType = message->data.senderId + SEND_TO_SERVER;
 
     if (msgsnd(msqid, message, sizeof(Data), 0) < 0) {
@@ -101,7 +118,7 @@ int main(void)
                message->data.secondArgument,
                message->data.operationCode,
                message->data.senderId);
-
+        
         pthread_create(&threadId, (pthread_attr_t *)NULL,
                                calcInThread, (void *) message);
 

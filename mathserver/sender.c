@@ -62,6 +62,14 @@ int main(void)
         int i;
         scanf("%f", &arg1);
         scanf("%c", &ch);
+        
+        /*
+         * FIXIT:
+         * Есть стандартные ф-и поиска символа в строке и т.д.
+         * http://cppstudio.com/cat/309/325/
+         * Не нужно писать свои.
+         */
+
         for (i = 0; i < operandsNumber; i++)
             if (operands[i] == ch) {
                 message.data.operationCode = i;
@@ -82,6 +90,9 @@ int main(void)
             return -1;
         }
 
+        /*
+         * Непонятно, зачем нужна константа SEND_TO_SERVER.
+         */
         if ((length = msgrcv(msqid, (Message *) &message,
                              sizeof(Data), getpid() + SEND_TO_SERVER, 0)) != sizeof(Data))
         {
@@ -89,9 +100,15 @@ int main(void)
             return -1;
         }
 
+        /*
+         * Можно было бы сделать разные структуры дл отправки запроса и для получения результата.
+         * Можно только догадываться, что сервер положит результат произведения в firstArgument.
+         * 
+         * А чтобы не дублировать дважды определения этих структур и кучу констант в клиенте и сервере их можно вынести в отдельный .h файл.
+         * Чтобы скомпилировать несколько файлов досточно написать их через пробел:
+         * gcc client.c mytypes.h -o client
+         */
         printf("\nResult is %f\n", message.data.firstArgument);
-
-
     }
     return 0;
 }
