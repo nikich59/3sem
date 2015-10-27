@@ -12,12 +12,11 @@
 #define MUL_CODE 2
 #define DIV_CODE 3
 
-#define DEFAULT_MAX_THREAD_NUM 5
+#define DEFAULT_MAX_THREAD_NUM 2
 
 #define SEND_TO_SERVER_KEY 1
 
-#define SEM1_PATH "sem1.txt"
-#define SEM2_PATH "sem2.txt"
+#define SEM_PATH "sem1.txt"
 #define MSG_PATH "temp.txt"
 
 typedef struct OperationMessageData
@@ -48,9 +47,9 @@ typedef struct ResultMessage
 typedef struct Server
 {
     int maxThreadNum;
-    int currentThreadNum;
+    //int currentThreadNum;
     int messageQueueId;
-    int atomicSemaphoreId;
+    //int atomicSemaphoreId;
     int threadNumsemaphoreId;
     OperationMessage message;
 } Server;
@@ -65,8 +64,6 @@ void *calculate(void *v);
 int getMessageQueueId(char *fileName);
 int runServer(Server *server);
 int getSemaphoreId(char *pathName);
-int startAtomic(Server *server);
-void finishAtomic(Server *server);
 int initServer(Server *server);
 void startComputingInThread(Server *server);
 
@@ -74,8 +71,6 @@ void *calculate(void *v)
 {
     printf("Started computing\n");
     ThreadData *threadData = (ThreadData *) v;
-
-    finishAtomic(threadData->server);
 
     ResultMessage resultMessage;
 
@@ -91,6 +86,8 @@ void *calculate(void *v)
     default:
         result = 0.0;
     }
+
+    sleep(5);
 
     resultMessage.data.result = result;
     resultMessage.msgType = threadData->message.data.senderId +
@@ -108,10 +105,6 @@ void *calculate(void *v)
     semaphore.sem_num = 0;
     semaphore.sem_op  = 1;
     semop(threadData->server->threadNumsemaphoreId, &semaphore, 1);
-
-    startAtomic(threadData->server);
-    threadData->server->currentThreadNum--;
-    finishAtomic(threadData->server);
 
     free(threadData);
 
@@ -163,43 +156,17 @@ int getSemaphoreId(char *pathName)
     return semget(key, 1, 0666 | IPC_CREAT);
 }
 
-int startAtomic(Server *server)
-{
-    struct sembuf semaphore;
-    semaphore.sem_flg = 0;
-    semaphore.sem_num = 0;
-    semaphore.sem_op = -1;
-    return semop(server->atomicSemaphoreId, &semaphore, 1);
-}
-
-void finishAtomic(Server *server)
-{
-    struct sembuf semaphore;
-    semaphore.sem_flg = 0;
-    semaphore.sem_num = 0;
-    semaphore.sem_op  = 1;
-    semop(server->atomicSemaphoreId, &semaphore, 1);
-}
-
 int initServer(Server *server)
 {
     server->messageQueueId = getMessageQueueId(MSG_PATH);
     if (server->messageQueueId < 0)
         return -1;
-    server->atomicSemaphoreId = getSemaphoreId(SEM1_PATH);
-    if (server->atomicSemaphoreId < 0)
-        return -1;
-    server->threadNumsemaphoreId = getSemaphoreId(SEM2_PATH);
+    server->threadNumsemaphoreId = getSemaphoreId(SEM_PATH);
     if (server->threadNumsemaphoreId < 0)
         return -1;
-    server->currentThreadNum = 0;
-    server->maxThreadNum = DEFAULT_MAX_THREAD_NUM - 1;
+    server->maxThreadNum = DEFAULT_MAX_THREAD_NUM;
 
     struct sembuf semaphore;
-    semaphore.sem_flg = 0;
-    semaphore.sem_num = 0;
-    semaphore.sem_op  = 1;
-    semop(server->atomicSemaphoreId, &semaphore, 1);
 
     semaphore.sem_flg = 0;
     semaphore.sem_num = 0;
@@ -211,7 +178,6 @@ int initServer(Server *server)
 
 void startComputingInThread(Server *server)
 {
-    startAtomic(server);
     ThreadData *threadData = (ThreadData *) malloc(sizeof(ThreadData));
     threadData->server = server;
     threadData->message.data.arg1 = server->message.data.arg1;
