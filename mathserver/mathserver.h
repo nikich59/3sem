@@ -18,7 +18,6 @@
 
 #define SEM1_PATH "sem1.txt"
 #define SEM2_PATH "sem2.txt"
-#define SEM_THREAD_PATH "sem3.txt"
 #define MSG_PATH "temp.txt"
 
 typedef struct OperationMessageData
@@ -151,6 +150,8 @@ int runServer(Server *server)
 
         startComputingInThread(server);
     }
+
+    return 0;
 }
 
 int getSemaphoreId(char *pathName)
