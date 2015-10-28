@@ -189,6 +189,14 @@ void startComputingInThread(Server *server)
     semaphore.sem_op = -1;
     semop(threadData->server->threadNumsemaphoreId, &semaphore, 1);
 
+    /*
+     * FIXIT:
+     * Вы попытались выкрутиться, сделав переменную ThreadData *threadData локальной.
+     * Т.е. в ф-ю создания потока вы передали указатель на локальную переменную, которая будет уничтожена по завершению данной ф-и.
+     * Именно переменная threadData, т.е. указатель. Теперь вам надо как-то гарантировать, что в ф-и void *calculate(void *v) этот указатель скопируется раньше в новую локальной для той ф-и переменную,
+     * чем уничтожится здесь на стеке.
+     */
+    
     pthread_t threadId;
     pthread_create(&threadId, (pthread_attr_t *)NULL, calculate, (void *) threadData);
 }
