@@ -47,9 +47,7 @@ typedef struct ResultMessage
 typedef struct Server
 {
     int maxThreadNum;
-    //int currentThreadNum;
     int messageQueueId;
-    //int atomicSemaphoreId;
     int threadNumsemaphoreId;
     OperationMessage message;
 } Server;
@@ -87,7 +85,7 @@ void *calculate(void *v)
         result = 0.0;
     }
 
-    sleep(5);
+    // sleep(5); // For debugging
 
     resultMessage.data.result = result;
     resultMessage.msgType = threadData->message.data.senderId +
