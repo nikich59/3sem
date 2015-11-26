@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 ﻿#include <stdio.h>
+=======
+#include <stdio.h>
+>>>>>>> f1299484415eeb425817c0356e5d2f1318ec2d46
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/signal.h>
@@ -73,4 +77,7 @@ int main(void)
 
     return 0;
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> f1299484415eeb425817c0356e5d2f1318ec2d46

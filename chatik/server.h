@@ -60,7 +60,7 @@ int sendClientAdditionMessages(const Server *server, const sockaddr_in *address,
         char s[MESSAGE_LENGTH];
         sprintf(s, "%s has just connected to the server.", nick);
         sendServerMessage(server, s);
-        printf("%s have just connected to the server.\n", nick);
+        printf("%s has just connected to the server.\n", nick);
         break;
     }
     case DOUBLE_NICK_NAME: {
@@ -94,9 +94,8 @@ int initServerDefault(Server *server)
     unsigned int ip;
     bzero(&address, sizeof(address));
     address.sin_family = AF_INET;
-    address.sin_port = getServerPort();
+    address.sin_port = htons(getServerPort());
     address.sin_addr.s_addr = htonl(INADDR_ANY);
-    //inet_aton(serverIp, &address.sin_addr);
     return initServer(server, &address, PF_INET, SOCK_DGRAM, 0);
 }
 
@@ -256,7 +255,7 @@ void processMessage(Server *server, Message *msg, sockaddr_in *address)
 
 int runServer(Server *server)
 {
-    printf("The server has started, port is %u\n", server->address.sin_port);
+    printf("The server has started.\n");
     Message msg;
     sockaddr_in address;
     int size = sizeof(address);

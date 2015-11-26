@@ -32,6 +32,10 @@ int runSender()
     while (1) {
         printf("%s:", client.nick);
         gets(s);
+        for (int i = 0; s[i] != '\0'; i++)
+            if (!(s[i] >= 32 || s[i] == '\n' || s[i] == '\t'))
+                s[i] = '?';
+
         printf("\n");
         if (s[0] == ' ') {
             char nick[NICK_LENGTH];
